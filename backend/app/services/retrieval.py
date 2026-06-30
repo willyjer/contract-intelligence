@@ -15,7 +15,6 @@ qdrant_client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_ap
 EMBEDDING_MODEL = "text-embedding-3-small"
 CHUNK_COLLECTION = "contract_chunks"
 TOP_K = 6
-SCORE_THRESHOLD = 0.45
 
 
 @dataclass
@@ -47,7 +46,6 @@ def search(question: str, doc_id: str | None = None) -> list[RetrievedChunk]:
         query_vector=query_vector,
         limit=TOP_K,
         query_filter=search_filter,
-        score_threshold=SCORE_THRESHOLD,
         with_payload=True,
     )
 

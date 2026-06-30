@@ -1,10 +1,9 @@
 """
-Explicit tests for the two "I don't know" paths.
+Explicit tests for the "I don't know" path.
 
-All three cases must return found=False. Run after Sessions 1-3 are complete.
-
-Path A — no chunks retrieved (retrieval returns empty, Claude never called)
-Path B — chunks retrieved but don't answer (Claude returns INSUFFICIENT_CONTEXT sentinel)
+All three cases must return found=False. The sole arbiter of relevance is Claude's
+INSUFFICIENT_CONTEXT sentinel — there is no score-threshold gate. Retrieval always
+returns the top-K candidates; Claude decides if they answer the question.
 
 Usage:
   python scripts/test_idontknow.py
@@ -37,10 +36,10 @@ TEST_CASES = [
         "expected_path": "B",
     },
     {
-        "label": "Path A — total non-sequitur, no relevant chunks",
+        "label": "Non-sequitur — unrelated question, Claude returns INSUFFICIENT_CONTEXT",
         "question": "What is the square footage of the office in the NDA?",
         "doc_id": None,
-        "expected_path": "A",
+        "expected_path": "B",
     },
 ]
 
@@ -59,11 +58,6 @@ def run_tests() -> None:
             print(f" (top score: {chunks[0].score:.3f})")
         else:
             print()
-
-        if case["expected_path"] == "A" and chunks:
-            print(f"      FAIL: expected 0 chunks (Path A) but got {len(chunks)}")
-            failed += 1
-            continue
 
         response = generate(case["question"], chunks)
 
