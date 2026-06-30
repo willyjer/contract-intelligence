@@ -1,6 +1,6 @@
 # Contract Intelligence Assistant
 
-**Live demo:** [CONTRACT_INTELLIGENCE_URL]
+**Live demo:** https://contract-intelligence-omega.vercel.app
 
 ---
 
@@ -20,9 +20,13 @@ When the answer isn't in the document, it says so clearly, with a distinct visua
 
 Every uploaded document is also automatically analyzed for key fields: parties, effective date, termination clause, payment terms, governing law, non-compete status. Fields that are missing or ambiguous are flagged explicitly rather than left blank.
 
+Scanned PDFs are handled automatically. When a page has no extractable text, the system renders it as an image and runs it through Claude vision to extract the content before ingestion — no manual preprocessing required.
+
 ---
 
 ## Key Decisions
+
+**Hybrid retrieval over pure semantic search.** Each chunk is stored with both a dense embedding (OpenAI text-embedding-3-small) and a BM25 sparse vector (FastEmbed). At query time, both are searched in parallel and fused with Reciprocal Rank Fusion inside Qdrant. The top 20 candidates then go through Cohere rerank-v3.5 before the final 6 reach Claude. Pure semantic search misses exact keyword matches — contract clause numbers, party names, specific dollar amounts — that BM25 catches. Reranking filters noise before it reaches the generation step.
 
 **Letting Claude be the relevance gate.** The original design used a cosine similarity score to decide whether retrieved chunks were relevant enough to pass to the model. I removed it. Embedding distance doesn't reliably track "does this chunk answer the question?" — a realistic question about late payment penalties scored just below the threshold against a chunk that directly answered it. The system would have returned "not found" for something clearly in the document. Claude's `INSUFFICIENT_CONTEXT` response is a better gate because it reads meaning rather than measuring distance. The model has the context; it should make the call.
 
