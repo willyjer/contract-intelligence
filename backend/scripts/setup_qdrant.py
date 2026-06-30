@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams
+from qdrant_client.models import Distance, VectorParams, PayloadSchemaType
 
 from app.config import settings
 
@@ -37,4 +37,21 @@ if "contract_documents" not in existing:
 else:
     print("Collection already exists: contract_documents")
 
+# Payload index on doc_id — required for per-document filtering in retrieval
+client.create_payload_index(
+    collection_name="contract_chunks",
+    field_name="doc_id",
+    field_schema=PayloadSchemaType.KEYWORD,
+)
+client.create_payload_index(
+    collection_name="contract_chunks",
+    field_name="is_demo",
+    field_schema=PayloadSchemaType.BOOL,
+)
+client.create_payload_index(
+    collection_name="contract_documents",
+    field_name="is_demo",
+    field_schema=PayloadSchemaType.BOOL,
+)
+print("Payload indexes created.")
 print("Done.")
