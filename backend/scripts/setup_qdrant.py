@@ -1,6 +1,12 @@
 """
 Run once to create the two Qdrant collections.
-Safe to re-run: skips creation if a collection already exists.
+
+contract_chunks  — dense + sparse vectors (hybrid retrieval)
+contract_documents — zero vector (key-value store, never searched)
+
+Re-running this script will WIPE contract_chunks and recreate it with the
+current schema. contract_documents is left untouched if it already exists.
+Run this whenever the contract_chunks schema changes (e.g. adding sparse vectors).
 """
 import sys
 from pathlib import Path
@@ -11,47 +17,45 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PayloadSchemaType
+from qdrant_client.models import (
+    Distance, VectorParams, SparseVectorParams, SparseIndexParams,
+    PayloadSchemaType,
+)
 
 from app.config import settings
 
 client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key)
-
 existing = {c.name for c in client.get_collections().collections}
 
-if "contract_chunks" not in existing:
-    client.create_collection(
-        collection_name="contract_chunks",
-        vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
-    )
-    print("Created collection: contract_chunks")
-else:
-    print("Collection already exists: contract_chunks")
+# contract_chunks: always recreate to ensure schema is current.
+# The lifespan function re-seeds demo contracts on next server start.
+if "contract_chunks" in existing:
+    client.delete_collection("contract_chunks")
+    print("Dropped existing contract_chunks collection.")
+
+client.create_collection(
+    collection_name="contract_chunks",
+    vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
+    sparse_vectors_config={
+        "text-sparse": SparseVectorParams(
+            index=SparseIndexParams(on_disk=False)
+        )
+    },
+)
+print("Created contract_chunks (dense + sparse).")
 
 if "contract_documents" not in existing:
     client.create_collection(
         collection_name="contract_documents",
         vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
     )
-    print("Created collection: contract_documents")
+    print("Created contract_documents.")
 else:
-    print("Collection already exists: contract_documents")
+    print("contract_documents already exists — skipped.")
 
-# Payload index on doc_id — required for per-document filtering in retrieval
-client.create_payload_index(
-    collection_name="contract_chunks",
-    field_name="doc_id",
-    field_schema=PayloadSchemaType.KEYWORD,
-)
-client.create_payload_index(
-    collection_name="contract_chunks",
-    field_name="is_demo",
-    field_schema=PayloadSchemaType.BOOL,
-)
-client.create_payload_index(
-    collection_name="contract_documents",
-    field_name="is_demo",
-    field_schema=PayloadSchemaType.BOOL,
-)
+# Payload indexes
+client.create_payload_index("contract_chunks", "doc_id", PayloadSchemaType.KEYWORD)
+client.create_payload_index("contract_chunks", "is_demo", PayloadSchemaType.BOOL)
+client.create_payload_index("contract_documents", "is_demo", PayloadSchemaType.BOOL)
 print("Payload indexes created.")
-print("Done.")
+print("Done. Restart the server to re-seed demo contracts.")

@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     openai_api_key: str
     qdrant_url: str
     qdrant_api_key: str
+    cohere_api_key: str
     query_rate_limit_per_hour: int = 20
     upload_rate_limit_per_hour: int = 5
     max_user_uploads: int = 50
