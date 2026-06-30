@@ -80,6 +80,11 @@ def _parse_citations(
 
 
 def generate(question: str, chunks: list[RetrievedChunk]) -> QueryResponse:
+    # Path A: retrieval found nothing above the score threshold — skip Claude entirely.
+    if not chunks:
+        logger.info("not_found_path=A question=%r", question[:80])
+        return QueryResponse(answer=NOT_FOUND_MESSAGE, found=False)
+
     user_message = _build_user_message(question, chunks)
 
     message = claude_client.messages.create(
@@ -90,8 +95,9 @@ def generate(question: str, chunks: list[RetrievedChunk]) -> QueryResponse:
     )
     response_text = message.content[0].text.strip()
 
+    # Path B: chunks were retrieved but don't answer the question.
     if response_text.startswith(INSUFFICIENT_CONTEXT_SENTINEL):
-        logger.info("generation result=insufficient_context question=%r", question[:80])
+        logger.info("not_found_path=B question=%r", question[:80])
         return QueryResponse(answer=NOT_FOUND_MESSAGE, found=False)
 
     citations = _parse_citations(response_text, chunks)
