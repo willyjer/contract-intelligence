@@ -185,7 +185,11 @@ def ingest_document(
     doc_id: str | None = None,
 ) -> dict:
     if doc_id is None:
-        doc_id = str(uuid.uuid4())
+        if is_demo:
+            # Stable UUID derived from filename so demo doc_ids survive Qdrant wipes/re-seeds.
+            doc_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, filename))
+        else:
+            doc_id = str(uuid.uuid4())
 
     doc_name = Path(filename).stem.replace("_", " ").title()
     doc_type = Path(filename).suffix.lower().lstrip(".")
