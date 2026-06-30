@@ -8,9 +8,10 @@ interface Props {
   scopedDocId: string | null;
   scopedDocName: string | null;
   onCitationClick: (citation: CitationRef) => void;
+  onClearScope: () => void;
 }
 
-export default function ChatPanel({ scopedDocId, scopedDocName, onCitationClick }: Props) {
+export default function ChatPanel({ scopedDocId, scopedDocName, onCitationClick, onClearScope }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -61,10 +62,19 @@ export default function ChatPanel({ scopedDocId, scopedDocName, onCitationClick 
     <div className="flex flex-col h-full">
       <div className="px-4 py-3 border-b border-gray-200 bg-white">
         <h2 className="font-semibold text-gray-800">Chat with your contracts</h2>
-        {scopedDocName && (
-          <p className="text-xs text-blue-600 mt-0.5">Searching within: {scopedDocName}</p>
-        )}
       </div>
+
+      {scopedDocName && (
+        <div className="flex items-center justify-between bg-blue-600 text-white px-4 py-2 text-sm font-medium">
+          <span>Searching within: {scopedDocName}</span>
+          <button
+            onClick={onClearScope}
+            className="flex items-center gap-1 bg-blue-700 hover:bg-blue-800 rounded px-2 py-1 text-xs transition-colors"
+          >
+            ✕ Clear
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.length === 0 && (

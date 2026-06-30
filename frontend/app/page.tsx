@@ -25,6 +25,7 @@ export default function Home() {
           scopedDocId={selectedDoc?.doc_id ?? null}
           scopedDocName={selectedDoc?.doc_name ?? null}
           onCitationClick={setActiveCitation}
+          onClearScope={() => setSelectedDoc(null)}
         />
       </div>
 
