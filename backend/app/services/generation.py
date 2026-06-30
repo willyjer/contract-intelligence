@@ -19,7 +19,8 @@ SYSTEM_PROMPT = """You are a contract analysis assistant. Answer questions using
 Cite each excerpt you use as [1], [2], etc., matching the numbers in the provided list.
 If the provided excerpts do not contain enough information to answer the question, respond with exactly:
 "INSUFFICIENT_CONTEXT: I couldn't find this information in the provided documents."
-Do not guess, infer, or use outside knowledge."""
+Do not guess, infer, or use outside knowledge.
+Write in plain text only. Do not use markdown formatting such as bold, italics, bullet points, or headers."""
 
 
 @dataclass
