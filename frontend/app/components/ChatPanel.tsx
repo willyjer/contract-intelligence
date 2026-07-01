@@ -11,15 +11,20 @@ interface Props {
   onClearScope: () => void;
 }
 
+const QUERY_STAGES = ["Searching contracts…", "Reranking relevant passages…", "Drafting a cited answer…"];
+const STAGE_MS = 650;
+
 export default function ChatPanel({ scopedDocId, scopedDocName, onCitationClick, onClearScope }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [stageIndex, setStageIndex] = useState(-1);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, stageIndex]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,9 +34,19 @@ export default function ChatPanel({ scopedDocId, scopedDocName, onCitationClick,
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: question }]);
     setLoading(true);
+    setStageIndex(0);
+
+    timerRef.current = setInterval(() => {
+      setStageIndex((i) => (i < QUERY_STAGES.length - 1 ? i + 1 : i));
+    }, STAGE_MS);
+
+    // Wait for both the real response and the full staged sequence, so a fast
+    // answer never truncates the narration and a slow one just holds the last
+    // stage instead of desyncing from the actual request.
+    const minimumSequence = new Promise<void>((resolve) => setTimeout(resolve, QUERY_STAGES.length * STAGE_MS));
 
     try {
-      const response = await queryDocuments(question, scopedDocId);
+      const [response] = await Promise.all([queryDocuments(question, scopedDocId), minimumSequence]);
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: response.answer, response },
@@ -50,7 +65,9 @@ export default function ChatPanel({ scopedDocId, scopedDocName, onCitationClick,
         },
       ]);
     } finally {
+      if (timerRef.current) clearInterval(timerRef.current);
       setLoading(false);
+      setStageIndex(-1);
     }
   }
 
@@ -60,16 +77,19 @@ export default function ChatPanel({ scopedDocId, scopedDocName, onCitationClick,
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 py-3 border-b border-gray-200 bg-white">
-        <h2 className="font-semibold text-gray-800">Chat with your contracts</h2>
+      <div className="px-4 py-3 border-b border-hairline bg-surface">
+        <h2 className="font-display italic text-ink">Chat with your contracts</h2>
       </div>
 
       {scopedDocName && (
-        <div className="flex items-center justify-between bg-blue-600 text-white px-4 py-2 text-sm font-medium">
-          <span>Searching within: {scopedDocName}</span>
+        <div className="mx-4 mt-3 flex items-center justify-between gap-3 bg-highlight-soft border-l-4 border-citation rounded-r-md px-3 py-2 text-sm shadow-sm">
+          <span className="text-ink">
+            <span className="font-data text-[0.7rem] uppercase tracking-wide text-citation mr-1.5">Exhibit —</span>
+            Searching within {scopedDocName}
+          </span>
           <button
             onClick={onClearScope}
-            className="flex items-center gap-1 bg-blue-700 hover:bg-blue-800 rounded px-2 py-1 text-xs transition-colors"
+            className="shrink-0 flex items-center gap-1 border border-citation text-citation hover:bg-citation hover:text-white rounded px-2 py-1 text-xs transition-colors"
           >
             ✕ Clear
           </button>
@@ -78,7 +98,7 @@ export default function ChatPanel({ scopedDocId, scopedDocName, onCitationClick,
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.length === 0 && (
-          <p className="text-sm text-gray-400 text-center mt-8">
+          <p className="text-sm text-ink-muted text-center mt-8">
             Ask a question about any of the preloaded contracts, or upload your own.
           </p>
         )}
@@ -87,15 +107,33 @@ export default function ChatPanel({ scopedDocId, scopedDocName, onCitationClick,
         ))}
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-500 animate-pulse">
-              Thinking…
+            <div className="bg-surface border border-hairline rounded-2xl rounded-tl-sm px-4 py-3 text-sm">
+              <ol className="flex flex-col gap-1.5">
+                {QUERY_STAGES.map((stage, i) => (
+                  <li key={stage} className="flex items-center gap-2">
+                    <span
+                      className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
+                        i < stageIndex
+                          ? "bg-verified border-verified text-white"
+                          : i === stageIndex
+                            ? "border-citation animate-pulse"
+                            : "border-hairline"
+                      }`}
+                      aria-hidden
+                    >
+                      {i < stageIndex && <span className="text-[0.5rem]">✓</span>}
+                    </span>
+                    <span className={i <= stageIndex ? "text-ink" : "text-ink-muted"}>{stage}</span>
+                  </li>
+                ))}
+              </ol>
             </div>
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
-      <form onSubmit={handleSubmit} className="px-4 py-3 border-t border-gray-200 bg-white">
+      <form onSubmit={handleSubmit} className="px-4 py-3 border-t border-hairline bg-surface">
         <div className="flex gap-2">
           <input
             type="text"
@@ -103,12 +141,12 @@ export default function ChatPanel({ scopedDocId, scopedDocName, onCitationClick,
             onChange={(e) => setInput(e.target.value)}
             placeholder={placeholder}
             disabled={loading}
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="flex-1 rounded-lg border border-hairline px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-citation disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-40 transition-colors"
+            className="bg-ink text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-citation disabled:opacity-40 transition-colors"
           >
             Send
           </button>

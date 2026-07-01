@@ -7,10 +7,20 @@ interface Props {
 }
 
 function FieldRow({ label, value }: { label: string; value: React.ReactNode }) {
+  const isMissing = value === "—";
   return (
-    <div className="flex gap-2 py-1.5 border-b border-gray-100 last:border-0 text-sm">
-      <span className="text-gray-500 w-36 shrink-0">{label}</span>
-      <span className="text-gray-800 break-words">{value}</span>
+    <div className="py-2 border-b border-hairline last:border-0 text-sm">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-ink-muted">{label}</span>
+        <span
+          className={`shrink-0 whitespace-nowrap font-data text-[0.65rem] uppercase tracking-wide ${
+            isMissing ? "text-redline" : "text-verified"
+          }`}
+        >
+          {isMissing ? "⚠ missing" : "✓ extracted"}
+        </span>
+      </div>
+      <p className="text-ink break-words mt-0.5">{value}</p>
     </div>
   );
 }
@@ -18,7 +28,7 @@ function FieldRow({ label, value }: { label: string; value: React.ReactNode }) {
 export default function ExtractionPanel({ docName, fields }: Props) {
   if (fields._raw) {
     return (
-      <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded text-sm text-amber-800">
+      <div className="mt-4 p-3 bg-redline-soft border border-redline rounded text-sm text-redline">
         Field extraction unavailable for this document.
       </div>
     );
@@ -29,10 +39,10 @@ export default function ExtractionPanel({ docName, fields }: Props) {
 
   return (
     <div className="mt-4">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+      <p className="text-xs font-data uppercase tracking-wide text-ink-muted mb-2">
         Auto-extracted fields
       </p>
-      <div className="bg-white border border-gray-200 rounded-lg p-3">
+      <div className="bg-surface border border-hairline rounded-lg p-3">
         <FieldRow label="Parties" value={fields.parties?.join(", ") || "—"} />
         <FieldRow label="Effective date" value={fields.effective_date ?? "—"} />
         <FieldRow label="Termination" value={fields.termination_clause ?? "—"} />
@@ -46,7 +56,7 @@ export default function ExtractionPanel({ docName, fields }: Props) {
           {fields.ambiguous_or_missing.map((note, i) => (
             <div
               key={i}
-              className="flex gap-1.5 items-start text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded px-2 py-1.5"
+              className="flex gap-1.5 items-start text-xs bg-redline-soft border border-redline text-redline rounded px-2 py-1.5"
             >
               <span className="mt-0.5 shrink-0">⚠</span>
               <span>{note}</span>
